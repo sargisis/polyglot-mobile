@@ -15,9 +15,9 @@ abstract class TranslationService {
 class HttpTranslationService implements TranslationService {
   final Dio _dio;
   // TODO: Add API Key and Base URL
-  final String _apiKey = 'YOUR_API_KEY';
-  final String _baseUrl =
-      'https://translation.googleapis.com/language/translate/v2';
+  // Base URL for Android emulator to access host localhost
+  // For iOS/Physical devices, use your machine's LAN IP
+  final String _baseUrl = 'http://10.0.2.2:8080/api/translate';
 
   HttpTranslationService(this._dio);
 
@@ -30,22 +30,16 @@ class HttpTranslationService implements TranslationService {
     try {
       final response = await _dio.post(
         _baseUrl,
-        queryParameters: {
-          'key': _apiKey,
-        },
         data: {
-          'q': text,
-          'source': sourceLanguage.code,
-          'target': targetLanguage.code,
-          'format': 'text',
+          'text': text,
+          'source_lang': sourceLanguage.code,
+          'target_lang': targetLanguage.code,
         },
       );
 
       if (response.statusCode == 200) {
-        // Parse Google Translate API response structure
-        // This is an example and might vary based on the specific API used
         final data = response.data;
-        return data['data']['translations'][0]['translatedText'];
+        return data['translated'];
       } else {
         throw Exception('Failed to translate text: ${response.statusCode}');
       }
