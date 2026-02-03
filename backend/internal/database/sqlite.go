@@ -2,6 +2,7 @@ package database
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 	"strings"
 
@@ -84,7 +85,7 @@ func seedData() {
 	DB.Exec("INSERT INTO translations (source_id, target_id) VALUES (?, ?)", id6, id5)
 }
 
-func GetTranslation(text string, sourceLang string, targetLang string) (string, error) {
+func GetTranslation(text string, sourceLang string, targetLang string) ([]string, error) {
 	// Normalized lookup
 	text = strings.TrimSpace(text)
 
@@ -93,14 +94,115 @@ func GetTranslation(text string, sourceLang string, targetLang string) (string, 
 	FROM words w
 	JOIN translations tr ON w.id = tr.source_id
 	JOIN words t ON tr.target_id = t.id
-	WHERE w.text = ? AND w.lang = ? AND t.lang = ?
-	COLLATE NOCASE
+	WHERE LOWER(w.text) = LOWER(?) AND w.lang = ? AND t.lang = ?
 	`
 
-	var translatedText string
-	err := DB.QueryRow(query, text, sourceLang, targetLang).Scan(&translatedText)
+	rows, err := DB.Query(query, text, sourceLang, targetLang)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return translatedText, nil
+	defer rows.Close()
+
+	var results []string
+	for rows.Next() {
+		var translatedText string
+		if err := rows.Scan(&translatedText); err != nil {
+			return nil, err
+		}
+		results = append(results, translatedText)
+	}
+
+	if len(results) == 0 {
+		return nil, sql.ErrNoRows
+	}
+
+	return results, nil
+}
+
+func SearchWords(queryStr string) ([]string, error) {
+	queryStr = strings.TrimSpace(queryStr)
+	if queryStr == "" {
+		return []string{}, nil
+	}
+
+	// Simple prefix search
+	sqlQuery := `
+	SELECT text FROM words 
+	WHERE text LIKE ? || '%' 
+	GROUP BY text
+	ORDER BY text ASC
+	LIMIT 20
+	`
+
+	rows, err := DB.Query(sqlQuery, queryStr)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []string
+	for rows.Next() {
+		var text string
+		if err := rows.Scan(&text); err != nil {
+			return nil, err
+		}
+		results = append(results, text)
+	}
+	return results, nil
+}
+
+func AddTranslation(sourceText, sourceLang, targetText, targetLang string) error {
+	// Normalize
+	sourceText = strings.TrimSpace(sourceText)
+	targetText = strings.TrimSpace(targetText)
+
+	if sourceText == "" || targetText == "" {
+		return fmt.Errorf("text cannot be empty")
+	}
+
+	tx, err := DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// Helper to get or insert word
+	getOrInsert := func(text, lang string) (int64, error) {
+		var id int64
+		err := tx.QueryRow("SELECT id FROM words WHERE LOWER(text) = LOWER(?) AND lang = ?", text, lang).Scan(&id)
+		if err == sql.ErrNoRows {
+			res, err := tx.Exec("INSERT INTO words (text, lang) VALUES (?, ?)", text, lang)
+			if err != nil {
+				return 0, err
+			}
+			return res.LastInsertId()
+		}
+		return id, err
+	}
+
+	sourceID, err := getOrInsert(sourceText, sourceLang)
+	if err != nil {
+		return err
+	}
+
+	targetID, err := getOrInsert(targetText, targetLang)
+	if err != nil {
+		return err
+	}
+
+	// Link
+	var exists int
+	tx.QueryRow("SELECT COUNT(*) FROM translations WHERE source_id = ? AND target_id = ?", sourceID, targetID).Scan(&exists)
+	if exists == 0 {
+		_, err = tx.Exec("INSERT INTO translations (source_id, target_id) VALUES (?, ?)", sourceID, targetID)
+		if err != nil {
+			return err
+		}
+		_, err = tx.Exec("INSERT INTO translations (source_id, target_id) VALUES (?, ?)", targetID, sourceID)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
 }

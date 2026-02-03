@@ -12,7 +12,8 @@ func NewRouter() *http.ServeMux {
 	mux.HandleFunc("/api/translate", handlers.TranslateHandler)
 
 	// Dictionary endpoints
-	mux.HandleFunc("/api/dictionary", handlers.DictionaryHandler)
+	mux.HandleFunc("/api/search", handlers.SearchHandler)
+	mux.HandleFunc("/api/words", handlers.AddWordHandler)
 
 	// Health check
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {

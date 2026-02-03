@@ -39,7 +39,8 @@ class HttpTranslationService implements TranslationService {
 
       if (response.statusCode == 200) {
         final data = response.data;
-        return data['translated'];
+        final translatedList = List<String>.from(data['translated']);
+        return translatedList.join('\n');
       } else {
         throw Exception('Failed to translate text: ${response.statusCode}');
       }
