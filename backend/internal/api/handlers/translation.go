@@ -13,8 +13,8 @@ type TranslationRequest struct {
 }
 
 type TranslationResponse struct {
-	Original   string `json:"original"`
-	Translated string `json:"translated"`
+	Original   string   `json:"original"`
+	Translated []string `json:"translated"`
 }
 
 func TranslateHandler(w http.ResponseWriter, r *http.Request) {
@@ -30,7 +30,7 @@ func TranslateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Custom database translation logic
-	translated, err := database.GetTranslation(req.Text, req.SourceLang, req.TargetLang)
+	translatedList, err := database.GetTranslation(req.Text, req.SourceLang, req.TargetLang)
 	if err != nil {
 		// Fallback or Not Found logic
 		http.Error(w, "Translation not found for: "+req.Text, http.StatusNotFound)
@@ -39,7 +39,7 @@ func TranslateHandler(w http.ResponseWriter, r *http.Request) {
 
 	resp := TranslationResponse{
 		Original:   req.Text,
-		Translated: translated,
+		Translated: translatedList,
 	}
 
 	w.Header().Set("Content-Type", "application/json")

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../dictionary/presentation/dictionary_screen.dart';
 import '../translation_providers.dart';
 import '../../domain/language_model.dart';
 
@@ -16,6 +17,19 @@ class TranslationScreen extends ConsumerWidget {
         title: const Text('Polyglot'),
         elevation: 0,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.book),
+            onPressed: () async {
+              final selectedWord = await Navigator.push<String>(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => const DictionaryScreen()),
+              );
+              if (selectedWord != null) {
+                notifier.updateSourceText(selectedWord);
+              }
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.history),
             onPressed: () {
