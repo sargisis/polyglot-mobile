@@ -68,7 +68,7 @@ class TranslationNotifier extends StateNotifier<TranslationState> {
           sourceLanguage: const Language(
               code: 'en', name: 'English', nativeName: 'English'),
           targetLanguage: const Language(
-              code: 'es', name: 'Spanish', nativeName: 'Español'),
+              code: 'hy', name: 'Armenian', nativeName: 'Հայերեն'),
         ));
 
   void updateSourceText(String text) {
